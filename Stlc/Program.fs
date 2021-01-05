@@ -103,9 +103,9 @@ let typeOf term =
     loop [] term
 
 /// Replaces all occurrences of param with arg in body.
-let rec subst iParam body arg =
-    let loop = subst iParam body
-    match arg with
+let rec subst iParam arg body =
+    let loop = subst iParam arg
+    match body with
 
             // no effect on literals
         | True -> True
@@ -118,12 +118,12 @@ let rec subst iParam body arg =
         | Variable iVar ->
             match compare iVar iParam with
                  | -1 -> Variable iVar
-                 |  0 -> body
+                 |  0 -> arg
                  |  1 -> Variable (iVar - 1)
                  |  _ -> failwith "Unexpected"
 
         | Lambda (argType, body') ->
-            let body' = subst (iParam+1) body body'
+            let body' = subst (iParam+1) arg body'
             Lambda (argType, body')
 
             // recursively substitute
@@ -166,4 +166,35 @@ let main argv =
         with ex ->
             printfn $"   ** {ex.Message} **"
 
+        // fun f -> fun x -> f x
+    let term =
+        Lambda (
+            Function(Boolean, Boolean),
+            Lambda (Boolean, Apply (Variable 1, Variable 0)))
+    printfn ""
+    printfn $"{typeOf term}"
+
+        // (fun f x -> f x) not true
+    let appl = Apply (Apply (term, not), True)
+    printfn $"{eval appl}"
+    let appl = Apply (Apply (term, not), False)
+    printfn $"{eval appl}"
+
+        // or1:  fun x -> fun y -> if x then true else y
+        // and: fun x -> fun y -> if x then y else false
+    let boolOr =
+        Lambda (
+            Boolean,
+            Lambda (Boolean, If (Variable 1, True, Variable 0)))
+    let boolAnd =
+        Lambda (
+            Boolean,
+            Lambda (Boolean, If (Variable 1, Variable 0, False)))
+    printfn ""
+    for x in [True; False] do
+        for y in [True; False] do
+            let applOr = Apply (Apply (boolOr, x), y)
+            let applAnd = Apply (Apply (boolAnd, x), y)
+            printfn $"{x} or {y} = {eval applOr}"
+            printfn $"{x} and {y} = {eval applAnd}"
     0
