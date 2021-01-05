@@ -19,6 +19,7 @@ type Type =
                 sprintf $"{typIn} -> {typOut}"
 
 /// A term is a typed value.
+[<StructuredFormatDisplay("{String}")>]
 type Term =
 
     /// Literal true.
@@ -41,6 +42,19 @@ type Term =
 
     /// Function application.
     | Apply of Term * Term
+
+    /// Pretty-print terms.
+    member term.String =
+        match term with
+            | True -> "true"
+            | False -> "false"
+            | If (cond, termTrue, termFalse) ->
+                $"if {cond} then {termTrue} else {termFalse}"
+            | Variable i -> $"var{i}"
+            | Lambda (typeIn, termOut) ->
+                $"fun (_ : {typeIn}) -> {termOut}"
+            | Apply (lambda, arg) ->
+                $"{lambda} {arg}"
 
 /// Answers the type of the given term, if it is well-typed.
 let typeOf term =
@@ -96,9 +110,9 @@ let main argv =
     let unbound = Variable 2
     let terms = [ id; cnst; not; bad; unbound ]
     for term in terms do
-        printfn "%A:" term
+        printf $"\r\n{term}\r\n   "
         try
-            printfn "   %A" <| typeOf term
+            printfn $"{typeOf term}"
         with ex ->
-            printfn "   %s" ex.Message
+            printfn $"** {ex.Message} **"
     0
