@@ -1,11 +1,12 @@
 ﻿(*
  * Simply typed lambda calculus.
+ * https://stackoverflow.com/questions/27831223/simply-typed-lambda-calculus-with-failure-in-haskell
  *)
 
 /// A type is either:
 ///    * A primitive type (e.g. Boolean), or
-///    * A function type, which maps an input type to
-///      an output type (e.g. Int -> Boolean).
+///    * A function type, which maps an input type to an
+///      output type (e.g. Boolean -> Boolean).
 [<StructuredFormatDisplay("{String}")>]
 type Type =
     | Boolean   // a simple primitive type
@@ -28,20 +29,20 @@ type Term =
     /// Literal false.
     | False
 
-    /// If/then/else.
+    /// If-then-else.
     | If of Condition : Term
         * TrueBranch : Term
         * FalseBranch : Term
 
-    /// A variable, using de Bruijn indexing. The nearest
-    /// enclosing lambda binds index 0.
+    /// A variable, using de Bruijn indexing. Index 0 corresponds
+    /// to the nearest enclosing lambda's input parameter.
     | Variable of Index : int
 
-    /// Lambda abstraction.
-    | Lambda of Type * Term
+    /// Lambda abstraction. E.g. fun (_ : bool) -> var0.
+    | Lambda of ParamType : Type * Body : Term
 
-    /// Function application.
-    | Apply of Term * Term
+    /// Function application. E.g. f(x).
+    | Apply of Lambda : Term * Arg : Term
 
     /// Pretty-print terms.
     member term.String =
@@ -51,8 +52,8 @@ type Term =
             | If (cond, tBranch, fBranch) ->
                 $"(if {cond} then {tBranch} else {fBranch})"
             | Variable i -> $"var{i}"
-            | Lambda (argType, body) ->
-                $"(fun (_ : {argType}) -> {body})"
+            | Lambda (paramType, body) ->
+                $"(fun (_ : {paramType}) -> {body})"
             | Apply (lambda, arg) ->
                 $"({lambda}) ({arg})"
 
@@ -68,12 +69,12 @@ let typeOf term =
         | True | False -> Boolean
 
             // if cond then tBranch else fBranch
-        | If (cond, tBranch, fBranch) ->
+        | If (cond, trueBranch, falseBranch) ->
             match loop env cond with
                 | Boolean ->   // condition must be a plain Boolean
-                    let tType = loop env tBranch
-                    let fType = loop env fBranch
-                    if tType = fType then tType   // branch types must match
+                    let trueType = loop env trueBranch
+                    let falseType = loop env falseBranch
+                    if trueType = falseType then trueType   // branch types must match
                     else failwith "Branch type mismatch"
                 | _ -> failwith "Condition must be of type Boolean"
 
@@ -84,12 +85,12 @@ let typeOf term =
                 |> Option.defaultWith (fun () ->
                     failwith "Unbound variable")
 
-            // fun (var0 : argType) -> body
-        | Lambda (argType, body) ->
+            // fun (_ : paramType) -> body
+        | Lambda (paramType, body) ->
             let bodyType =
-                let env' = argType :: env   // add variable type to environment
+                let env' = paramType :: env   // add param type to environment
                 loop env' body
-            Function (argType, bodyType)
+            Function (paramType, bodyType)
 
             // function application
         | Apply (lambda, arg) ->
@@ -101,60 +102,68 @@ let typeOf term =
 
     loop [] term
 
-let rec substitute n term = function
-    | True -> True
-    | False -> False
-    | If (cond, tBranch, fBranch) ->
-        If (
-            substitute n term cond,
-            substitute n term tBranch,
-            substitute n term fBranch)
-    | Variable i ->
-        match compare i n with
-             | -1 -> Variable i
-             |  0 -> term
-             |  1 -> Variable (i - 1)
-             |  _ -> failwith "Unexpected"
-    | Lambda (argType, body) ->
-        let body' = substitute (n+1) term body
-        Lambda (argType, body')
-    | Apply (lambda, arg) ->
-        Apply (
-            substitute n term lambda,
-            substitute n term arg)
+/// Replaces all occurrences of param with arg in body.
+let rec subst iParam body arg =
+    let loop = subst iParam body
+    match arg with
 
-let rec evaluate = function
+            // no effect on literals
+        | True -> True
+        | False -> False
+
+            // recursively substitute
+        | If (cond, tBranch, fBranch) ->
+            If (loop cond, loop tBranch, loop fBranch)
+
+        | Variable iVar ->
+            match compare iVar iParam with
+                 | -1 -> Variable iVar
+                 |  0 -> body
+                 |  1 -> Variable (iVar - 1)
+                 |  _ -> failwith "Unexpected"
+
+        | Lambda (argType, body') ->
+            let body' = subst (iParam+1) body body'
+            Lambda (argType, body')
+
+            // recursively substitute
+        | Apply (lambda, arg) ->
+            Apply (loop lambda, loop arg)
+
+/// Evaluates the given term.
+let rec eval = function
     | Apply (lambda, arg) ->
-        match evaluate lambda with
+        match eval lambda with
             | Lambda (_, body) ->
-                substitute 0 arg body
-                    |> evaluate
+                subst 0 arg body
+                    |> eval
             | _ -> failwith "Not a function"
     | If (cond, tTerm, fTerm) ->
-        match evaluate cond with
-            | True -> evaluate tTerm
-            | False -> evaluate fTerm
+        match eval cond with
+            | True -> eval tTerm
+            | False -> eval fTerm
             | _ -> failwith "Condition must be of type Boolean"
     | term -> term
 
 [<EntryPoint>]
 let main argv =
 
+    let tru = True
     let id = Lambda (Boolean, (Variable 0))                     // fun (x : bool) -> x
     let cnst = Lambda (Boolean, Lambda (Boolean, Variable 1))   // fun (x : bool) -> fun (y : bool) -> x
     let not = Lambda (Boolean, If (Variable 0, False, True))    // fun (x : bool) -> if x then false else true
     let bad = If (True, id, cnst)
     let unbound = Variable 2
 
-    for term in [ id; cnst; not; bad; unbound ] do
+    for term in [ tru; id; cnst; not; bad; unbound ] do
         printfn ""
         printfn $"{term}"
         try
             printfn $"   {typeOf term}"
             for input in [ True; False ] do
                 let apply = Apply (term, input)
-                printfn $"   {input}: {evaluate apply}"
+                printfn $"   {input}: {eval apply}"
         with ex ->
-            printfn $"** {ex.Message} **"
+            printfn $"   ** {ex.Message} **"
 
     0
