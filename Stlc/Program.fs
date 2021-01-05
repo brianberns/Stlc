@@ -15,8 +15,8 @@ type Type =
     member typ.String =
         match typ with
             | Boolean -> "bool"
-            | Function (typIn, typOut) ->
-                sprintf $"{typIn} -> {typOut}"
+            | Function (inType, outType) ->
+                sprintf $"{inType} -> {outType}"
 
 /// A term is a typed value.
 [<StructuredFormatDisplay("{String}")>]
@@ -48,11 +48,11 @@ type Term =
         match term with
             | True -> "true"
             | False -> "false"
-            | If (cond, termTrue, termFalse) ->
-                $"(if {cond} then {termTrue} else {termFalse})"
+            | If (cond, tBranch, fBranch) ->
+                $"(if {cond} then {tBranch} else {fBranch})"
             | Variable i -> $"var{i}"
-            | Lambda (typeIn, termOut) ->
-                $"(fun (_ : {typeIn}) -> {termOut})"
+            | Lambda (argType, body) ->
+                $"(fun (_ : {argType}) -> {body})"
             | Apply (lambda, arg) ->
                 $"({lambda}) ({arg})"
 
@@ -67,13 +67,13 @@ let typeOf term =
             // Boolean literals
         | True | False -> Boolean
 
-            // if cond then termTrue else termFalse
-        | If (cond, termTrue, termFalse) ->
+            // if cond then tBranch else fBranch
+        | If (cond, tBranch, fBranch) ->
             match loop env cond with
                 | Boolean ->   // condition must be a plain Boolean
-                    let typeTrue = loop env termTrue
-                    let typeFalse = loop env termFalse
-                    if typeTrue = typeFalse then typeTrue   // branch types must match
+                    let tType = loop env tBranch
+                    let fType = loop env fBranch
+                    if tType = fType then tType   // branch types must match
                     else failwith "Branch type mismatch"
                 | _ -> failwith "Condition must be of type Boolean"
 
@@ -84,18 +84,18 @@ let typeOf term =
                 |> Option.defaultWith (fun () ->
                     failwith "Unbound variable")
 
-            // fun (var0 : typeIn) -> termOut
-        | Lambda (typeIn, termOut) ->
-            let typeOut =
-                let env' = typeIn :: env   // add variable type to environment
-                loop env' termOut
-            Function (typeIn, typeOut)
+            // fun (var0 : argType) -> body
+        | Lambda (argType, body) ->
+            let bodyType =
+                let env' = argType :: env   // add variable type to environment
+                loop env' body
+            Function (argType, bodyType)
 
             // function application
         | Apply (lambda, arg) ->
             match loop env lambda with   // first term must be a function
-                | Function (typeIn, typeOut) ->
-                    if loop env arg = typeIn then typeOut   // argument's type must match expected input type
+                | Function (inType, outType) ->
+                    if loop env arg = inType then outType   // argument's type must match expected input type
                     else failwith "Unexpected argument type"
                 | _ -> failwith "Not a function"
 
@@ -104,36 +104,36 @@ let typeOf term =
 let rec substitute n term = function
     | True -> True
     | False -> False
-    | If (cond, termTrue, termFalse) ->
+    | If (cond, tBranch, fBranch) ->
         If (
             substitute n term cond,
-            substitute n term termTrue,
-            substitute n term termFalse)
+            substitute n term tBranch,
+            substitute n term fBranch)
     | Variable i ->
         match compare i n with
              | -1 -> Variable i
              |  0 -> term
              |  1 -> Variable (i - 1)
              |  _ -> failwith "Unexpected"
-    | Lambda (typeIn, termOut) ->
-        let termOut' = substitute (n+1) term termOut
-        Lambda (typeIn, termOut')
-    | Apply (term', term'') ->
+    | Lambda (argType, body) ->
+        let body' = substitute (n+1) term body
+        Lambda (argType, body')
+    | Apply (lambda, arg) ->
         Apply (
-            substitute n term term',
-            substitute n term term'')
+            substitute n term lambda,
+            substitute n term arg)
 
 let rec evaluate = function
     | Apply (lambda, arg) ->
         match evaluate lambda with
-            | Lambda (_, termOut) ->
-                substitute 0 arg termOut
+            | Lambda (_, body) ->
+                substitute 0 arg body
                     |> evaluate
             | _ -> failwith "Not a function"
-    | If (cond, termTrue, termFalse) ->
+    | If (cond, tTerm, fTerm) ->
         match evaluate cond with
-            | True -> evaluate termTrue
-            | False -> evaluate termFalse
+            | True -> evaluate tTerm
+            | False -> evaluate fTerm
             | _ -> failwith "Condition must be of type Boolean"
     | term -> term
 
@@ -145,8 +145,8 @@ let main argv =
     let not = Lambda (Boolean, If (Variable 0, False, True))    // fun (x : bool) -> if x then false else true
     let bad = If (True, id, cnst)
     let unbound = Variable 2
-    let terms = [ id; cnst; not; bad; unbound ]
-    for term in terms do
+
+    for term in [ id; cnst; not; bad; unbound ] do
         printfn ""
         printfn $"{term}"
         try
