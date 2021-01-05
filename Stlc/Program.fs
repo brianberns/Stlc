@@ -198,4 +198,5 @@ let main argv =
             let applAnd = Apply (Apply (boolAnd, x), y)
             printfn $"{x} or {y} = {eval applOr}"
             printfn $"{x} and {y} = {eval applAnd}"
+
     0
