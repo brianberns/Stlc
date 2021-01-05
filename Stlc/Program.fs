@@ -1,6 +1,5 @@
 ﻿(*
  * Simply typed lambda calculus.
- * https://stackoverflow.com/questions/27831223/simply-typed-lambda-calculus-with-failure-in-haskell
  *)
 
 /// A type is either:
@@ -104,7 +103,10 @@ let typeOf term =
 
 /// Replaces all occurrences of param with arg in body.
 let rec subst iParam arg body =
-    let loop = subst iParam arg
+
+        // shorthand for simple recursive substitution
+    let cont = subst iParam arg
+
     match body with
 
             // no effect on literals
@@ -112,50 +114,54 @@ let rec subst iParam arg body =
         | False -> False
 
             // recursively substitute
-        | If (cond, tBranch, fBranch) ->
-            If (loop cond, loop tBranch, loop fBranch)
+        | If (cond, trueBranch, falseBranch) ->
+            If (cont cond, cont trueBranch, cont falseBranch)
 
+            // substitute iff variables match
         | Variable iVar ->
-            match compare iVar iParam with
-                 | -1 -> Variable iVar
-                 |  0 -> arg
-                 |  1 -> Variable (iVar - 1)
-                 |  _ -> failwith "Unexpected"
+            if iVar = iParam then arg
+            else body
 
+            // current var0 is known as var1 within
         | Lambda (argType, body') ->
             let body' = subst (iParam+1) arg body'
             Lambda (argType, body')
 
             // recursively substitute
         | Apply (lambda, arg) ->
-            Apply (loop lambda, loop arg)
+            Apply (cont lambda, cont arg)
 
 /// Evaluates the given term.
 let rec eval = function
+
+        // function application
     | Apply (lambda, arg) ->
         match eval lambda with
             | Lambda (_, body) ->
                 subst 0 arg body
                     |> eval
             | _ -> failwith "Not a function"
-    | If (cond, tTerm, fTerm) ->
+
+        // evaluate correct branch only
+    | If (cond, trueBranch, falseBranch) ->
         match eval cond with
-            | True -> eval tTerm
-            | False -> eval fTerm
+            | True -> eval trueBranch
+            | False -> eval falseBranch
             | _ -> failwith "Condition must be of type Boolean"
+
     | term -> term
 
 [<EntryPoint>]
 let main argv =
 
-    let tru = True
     let id = Lambda (Boolean, (Variable 0))                     // fun (x : bool) -> x
+    let tru = Lambda (Boolean, True)                            // fun (x : bool) -> true
     let cnst = Lambda (Boolean, Lambda (Boolean, Variable 1))   // fun (x : bool) -> fun (y : bool) -> x
     let not = Lambda (Boolean, If (Variable 0, False, True))    // fun (x : bool) -> if x then false else true
     let bad = If (True, id, cnst)
     let unbound = Variable 2
 
-    for term in [ tru; id; cnst; not; bad; unbound ] do
+    for term in [ True; id; tru; cnst; not; bad; unbound ] do
         printfn ""
         printfn $"{term}"
         try
@@ -176,11 +182,9 @@ let main argv =
 
         // (fun f x -> f x) not true
     let appl = Apply (Apply (term, not), True)
-    printfn $"{eval appl}"
-    let appl = Apply (Apply (term, not), False)
-    printfn $"{eval appl}"
+    printfn $"not true = {eval appl}"
 
-        // or1:  fun x -> fun y -> if x then true else y
+        // or:  fun x -> fun y -> if x then true else y
         // and: fun x -> fun y -> if x then y else false
     let boolOr =
         Lambda (
