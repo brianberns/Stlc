@@ -49,12 +49,12 @@ type Term =
             | True -> "true"
             | False -> "false"
             | If (cond, termTrue, termFalse) ->
-                $"if {cond} then {termTrue} else {termFalse}"
+                $"(if {cond} then {termTrue} else {termFalse})"
             | Variable i -> $"var{i}"
             | Lambda (typeIn, termOut) ->
-                $"fun (_ : {typeIn}) -> {termOut}"
+                $"(fun (_ : {typeIn}) -> {termOut})"
             | Apply (lambda, arg) ->
-                $"{lambda} {arg}"
+                $"({lambda}) ({arg})"
 
 /// Answers the type of the given term, if it is well-typed.
 let typeOf term =
@@ -101,8 +101,45 @@ let typeOf term =
 
     loop [] term
 
+let rec substitute n term = function
+    | True -> True
+    | False -> False
+    | If (cond, termTrue, termFalse) ->
+        If (
+            substitute n term cond,
+            substitute n term termTrue,
+            substitute n term termFalse)
+    | Variable i ->
+        match compare i n with
+             | -1 -> Variable i
+             |  0 -> term
+             |  1 -> Variable (i - 1)
+             |  _ -> failwith "Unexpected"
+    | Lambda (typeIn, termOut) ->
+        let termOut' = substitute (n+1) term termOut
+        Lambda (typeIn, termOut')
+    | Apply (term', term'') ->
+        Apply (
+            substitute n term term',
+            substitute n term term'')
+
+let rec evaluate = function
+    | Apply (lambda, arg) ->
+        match evaluate lambda with
+            | Lambda (_, termOut) ->
+                substitute 0 arg termOut
+                    |> evaluate
+            | _ -> failwith "Not a function"
+    | If (cond, termTrue, termFalse) ->
+        match evaluate cond with
+            | True -> evaluate termTrue
+            | False -> evaluate termFalse
+            | _ -> failwith "Condition must be of type Boolean"
+    | term -> term
+
 [<EntryPoint>]
 let main argv =
+
     let id = Lambda (Boolean, (Variable 0))                     // fun (x : bool) -> x
     let cnst = Lambda (Boolean, Lambda (Boolean, Variable 1))   // fun (x : bool) -> fun (y : bool) -> x
     let not = Lambda (Boolean, If (Variable 0, False, True))    // fun (x : bool) -> if x then false else true
@@ -110,9 +147,14 @@ let main argv =
     let unbound = Variable 2
     let terms = [ id; cnst; not; bad; unbound ]
     for term in terms do
-        printf $"\r\n{term}\r\n   "
+        printfn ""
+        printfn $"{term}"
         try
-            printfn $"{typeOf term}"
+            printfn $"   {typeOf term}"
+            for input in [ True; False ] do
+                let apply = Apply (term, input)
+                printfn $"   {input}: {evaluate apply}"
         with ex ->
             printfn $"** {ex.Message} **"
+
     0
