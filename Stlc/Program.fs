@@ -103,10 +103,7 @@ let typeOf term =
 
 /// Replaces all occurrences of param with arg in body.
 let rec subst iParam arg body =
-
-        // shorthand for simple recursive substitution
-    let cont = subst iParam arg
-
+    let cont = subst iParam arg   // shorthand for simple recursive substitution
     match body with
 
             // no effect on literals
