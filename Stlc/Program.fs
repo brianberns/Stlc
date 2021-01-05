@@ -45,60 +45,47 @@ type Term =
 /// Answers the type of the given term, if it is well-typed.
 let typeOf term =
 
+    let typeError () =
+        failwith "** Type error **"
+
     /// Determines the type of a term within a given environment,
     /// which is a list of types of free variables (i.e. variables
     /// bound at a higher level than this).
     let rec loop env = function
 
             // Boolean literals
-        | True | False -> Some Boolean
+        | True | False -> Boolean
 
             // if cond then termTrue else termFalse
         | If (cond, termTrue, termFalse) ->
-
-                // loop with the same environment
-            let nest = loop env
-
-                // condition must be a plain Boolean
-            if nest cond = Some Boolean then
-
-                    // types of each branch must match
-                match (nest termTrue), (nest termFalse) with
-                    | Some typeTrue, Some typeFalse
-                        when typeTrue = typeFalse -> Some typeTrue
-                    | _ -> None
-
-            else None
+            match loop env cond with
+                | Boolean ->   // condition must be a plain Boolean
+                    let typeTrue = loop env termTrue
+                    let typeFalse = loop env termFalse
+                    if typeTrue = typeFalse then typeTrue   // branch types must match
+                    else typeError ()
+                | _ -> typeError ()
 
             // variable in the given environment
         | Variable i ->
-            env |> List.tryItem i
+            env
+                |> List.tryItem i
+                |> Option.defaultWith typeError
 
             // fun (var0 : typeIn) -> termOut
         | Lambda (typeIn, termOut) ->
-
-                // add the given input type to the environment
-            let env' = typeIn :: env
-
-                // find the type of the given output term in that environment
-            loop env' termOut
-                |> Option.map (fun typeOut ->
-                    Function (typeIn, typeOut))
+            let typeOut =
+                let env' = typeIn :: env   // add variable type to environment
+                loop env' termOut
+            Function (typeIn, typeOut)
 
             // function application
         | Apply (lambda, arg) ->
-
-                // first term must be a function
-            match loop env lambda with
-
-                    // argument's type must match the expected input type
-                | Some (Function (typeIn, typeOut)) ->
-                    let typeArg = loop env arg
-                    if typeArg = Some typeIn then
-                        Some typeOut
-                    else None
-
-                | _ -> None
+            match loop env lambda with   // first term must be a function
+                | Function (typeIn, typeOut) ->
+                    if loop env arg = typeIn then typeOut   // argument's type must match expected input type
+                    else typeError ()
+                | _ -> typeError ()
 
     loop [] term
 
@@ -110,8 +97,9 @@ let main argv =
     let bad = If (True, id, cnst)
     let terms = [ id; cnst; not; bad ]
     for term in terms do
-        typeOf term
-            |> Option.map (fun typ -> typ.String)
-            |> Option.defaultValue "Type error"
-            |> printfn "%A:\r\n   %s" term
+        printfn "%A:" term
+        try
+            printfn "   %A" <| typeOf term
+        with ex ->
+            printfn "   %s" ex.Message
     0
