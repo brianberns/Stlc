@@ -45,9 +45,6 @@ type Term =
 /// Answers the type of the given term, if it is well-typed.
 let typeOf term =
 
-    let typeError () =
-        failwith "** Type error **"
-
     /// Determines the type of a term within a given environment,
     /// which is a list of types of free variables (i.e. variables
     /// bound at a higher level than this).
@@ -63,14 +60,15 @@ let typeOf term =
                     let typeTrue = loop env termTrue
                     let typeFalse = loop env termFalse
                     if typeTrue = typeFalse then typeTrue   // branch types must match
-                    else typeError ()
-                | _ -> typeError ()
+                    else failwith "Branch type mismatch"
+                | _ -> failwith "Condition must be of type Boolean"
 
             // variable in the given environment
         | Variable i ->
             env
                 |> List.tryItem i
-                |> Option.defaultWith typeError
+                |> Option.defaultWith (fun () ->
+                    failwith "Unbound variable")
 
             // fun (var0 : typeIn) -> termOut
         | Lambda (typeIn, termOut) ->
@@ -84,8 +82,8 @@ let typeOf term =
             match loop env lambda with   // first term must be a function
                 | Function (typeIn, typeOut) ->
                     if loop env arg = typeIn then typeOut   // argument's type must match expected input type
-                    else typeError ()
-                | _ -> typeError ()
+                    else failwith "Unexpected argument type"
+                | _ -> failwith "Not a function"
 
     loop [] term
 
@@ -95,7 +93,8 @@ let main argv =
     let cnst = Lambda (Boolean, Lambda (Boolean, Variable 1))   // fun (x : bool) -> fun (y : bool) -> x
     let not = Lambda (Boolean, If (Variable 0, False, True))    // fun (x : bool) -> if x then false else true
     let bad = If (True, id, cnst)
-    let terms = [ id; cnst; not; bad ]
+    let unbound = Variable 2
+    let terms = [ id; cnst; not; bad; unbound ]
     for term in terms do
         printfn "%A:" term
         try
