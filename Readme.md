@@ -3,12 +3,13 @@ This is an example of a simply-typed lambda calculus in F#. I've provided a sing
 ## Example
 Let's implement the Boolean `not` function. Textually, it would be a lambda that looks something like this:
 ```F#
-fun (x : bool) -> if x then false else true
+let not = fun (x : bool) -> if x then false else true
 ```
-
-    let not = Lambda (Boolean, If (Variable 0, False, True))
-
+This can be converted directly into the DSL as:
+```F#
+let not = Lambda (Boolean, If (Variable 0, False, True))
+```
+Now we can call this function with an argument
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbLTE2Mjc3MjIwMTIsLTIxMTYxMTY5MjldfQ
-==
+eyJoaXN0b3J5IjpbODYxMTU4NjA5LC0yMTE2MTE2OTI5XX0=
 -->
