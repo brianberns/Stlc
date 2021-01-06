@@ -118,9 +118,9 @@ module Term =
                 // substitute iff variables match
             | Variable iVar ->
                 match compare iVar iParam with
-                     | -1 -> body
-                     |  0 -> arg
-                     |  1 -> Variable (iVar - 1)   // shift so that any references to variable outside this lambda will still point to the right place
+                     | -1 -> body                  // not a match: no effect
+                     |  0 -> arg                   // match: substitute value
+                     |  1 -> Variable (iVar - 1)   // free variable: shift to maintain external references to it
                      |  _ -> failwith "Unexpected"
 
                 // current var0 is known as var1 within
