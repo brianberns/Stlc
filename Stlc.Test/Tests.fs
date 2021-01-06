@@ -56,14 +56,20 @@ type TestClass () =
     [<TestMethod>]
     member __.NestedLambda() =
 
-            // fun f -> fun x -> f x
+            // fun f -> (fun x -> f x)
         let lambda =
             Lambda (
                 Function(Boolean, Boolean),
                 Lambda (Boolean, Apply (Variable 1, Variable 0)))
-
-            // (fun f x -> f x) not true
         let term = Apply (Apply (lambda, not), True)
+        Assert.AreEqual(False, Term.eval term)
+
+            // fun x -> (fun f -> f x)
+        let lambda =
+            Lambda (
+                Function(Boolean, Boolean),
+                Lambda (Boolean, Apply (Variable 0, Variable 1)))
+        let term = Apply (Apply (lambda, True), not)
         Assert.AreEqual(False, Term.eval term)
 
     [<TestMethod>]
@@ -105,3 +111,14 @@ type TestClass () =
         for (x, y, expected) in cases do
             let term = Apply (Apply (lambda, x), y)
             Assert.AreEqual(expected, Term.eval term)
+
+    [<TestMethod>]
+    member __.OpenTerm() =
+
+            // fun x -> x y
+        let lambda =
+            Lambda (
+                Function(Boolean, Boolean),
+                Apply (Variable 0, Variable 1))
+        let term = Apply (lambda, id)
+        Assert.AreEqual(Variable 0, Term.eval term)

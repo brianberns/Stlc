@@ -103,7 +103,7 @@ module Term =
         loop [] term
 
     /// Replaces all occurrences of param with arg in body.
-    let rec subst iParam arg body =
+    let rec private subst iParam arg body =
         let cont = subst iParam arg   // shorthand for simple recursive substitution
         match body with
 
