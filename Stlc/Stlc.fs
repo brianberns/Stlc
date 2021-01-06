@@ -1,4 +1,4 @@
-﻿/// Simply typed lambda calculus.
+﻿/// Simply-typed lambda calculus.
 namespace Stlc
 
 /// A type is either:
