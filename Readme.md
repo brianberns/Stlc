@@ -9,7 +9,10 @@ This can be converted directly into the DSL as:
 ```F#
 let not = Lambda (Boolean, If (Variable 0, False, True))
 ```
-Now we can call this function with an argument
+Now we can show that this function inverts its input, as expected:
+```F#
+not true => 
+```
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbODYxMTU4NjA5LC0yMTE2MTE2OTI5XX0=
+eyJoaXN0b3J5IjpbLTg5OTU5MjU3OSwtMjExNjExNjkyOV19
 -->
