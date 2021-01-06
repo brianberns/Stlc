@@ -11,8 +11,10 @@ let not = Lambda (Boolean, If (Variable 0, False, True))
 ```
 Now we can show that this function inverts its input, as expected:
 ```F#
-not true => 
+// not true => false
+let result = Apply(not, True) |> Term.eval
+assert(result = False)
 ```
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbLTg5OTU5MjU3OSwtMjExNjExNjkyOV19
+eyJoaXN0b3J5IjpbMTY0OTA3NzYxMSwtMjExNjExNjkyOV19
 -->
