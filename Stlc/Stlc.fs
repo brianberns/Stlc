@@ -47,8 +47,8 @@ type Term =
         match term with
             | True -> "true"
             | False -> "false"
-            | If (cond, tBranch, fBranch) ->
-                $"(if {cond} then {tBranch} else {fBranch})"
+            | If (cond, trueBranch, falseBranch) ->
+                $"(if {cond} then {trueBranch} else {falseBranch})"
             | Variable i -> $"var{i}"
             | Lambda (paramType, body) ->
                 $"(fun (_ : {paramType}) -> {body})"
@@ -68,7 +68,7 @@ module Term =
                 // Boolean literals
             | True | False -> Boolean
 
-                // if cond then tBranch else fBranch
+                // if cond then trueBranch else falseBranch
             | If (cond, trueBranch, falseBranch) ->
                 match loop env cond with
                     | Boolean ->   // condition must be a plain Boolean
