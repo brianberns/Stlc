@@ -33,7 +33,7 @@ type Term =
         * FalseBranch : Term
 
     /// A variable, using de Bruijn indexing. Index 0 corresponds
-    /// to the nearest enclosing lambda's input parameter.
+    /// to the most nested lambda's input parameter.
     | Variable of Index : int
 
     /// Lambda abstraction. E.g. fun (_ : bool) -> var0.
@@ -101,6 +101,37 @@ module Term =
                     | _ -> failwith "Not a function"
 
         loop [] term
+
+    (*
+     * Maintaining indexes is a bit tricky during parameter substitution,
+     * so it helps to have a clear picture of how de Bruijn indexes work.
+     * When we wrap an existing term in a lambda, it's like adding a story
+     * to a building:
+     *
+     *                               +---------+
+     *                               |  * 2 *  |
+     *    +---------+                +---------+
+     *    |    1    |   New lambda   |    1    |
+     *    +---------+  ===========>  +---------+
+     *    |    0    |                |    0    |
+     *    +---------+                +---------+
+     *
+     * So when we unwrap a lambda (via function application), the indexes
+     * of variables nested *below* that lambda are unaffected. However,
+     * the lambda body might also contain indexes defined *above* its level
+     * ("free variables"). In this case, those indexes fall down one level
+     * during the process (like Jenga blocks):
+     *
+     * +---------+         +---------+
+     * |    3    |         |    3    |
+     * +---------+         +---------+         +---------+
+     * | xx 2 xx |                             | 3 => 2  |
+     * +---------+  ====>  +---------+  ====>  +---------+
+     * |    1    |         |    1    |         |    1    |
+     * +---------+         +---------+         +---------+
+     * |    0    |         |    0    |         |    0    |
+     * +---------+         +---------+         +---------+
+     *)
 
     /// Replaces all occurrences of param with arg in body.
     let rec private subst iParam arg body =
