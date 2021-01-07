@@ -9,6 +9,10 @@ This can be converted directly into the DSL as:
 ```F#
 let not = Lambda (Boolean, If (Variable 0, False, True))
 ```
+The lambda has the expected type:
+```F#
+
+```
 Now we can show that this function inverts its input, as expected:
 ```F#
 // not true => false
@@ -16,6 +20,6 @@ let result = Apply(not, True) |> Term.eval
 assert(result = False)
 ```
 <!--stackedit_data:
-eyJoaXN0b3J5IjpbNjgxNzQ5MjA5LDE2NDkwNzc2MTEsLTIxMT
-YxMTY5MjldfQ==
+eyJoaXN0b3J5IjpbNTYxMjAzNDMzLDY4MTc0OTIwOSwxNjQ5MD
+c3NjExLC0yMTE2MTE2OTI5XX0=
 -->
