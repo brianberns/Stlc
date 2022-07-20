@@ -1,4 +1,4 @@
-namespace Stlc.Test
+﻿namespace Stlc.Test
 
 open Microsoft.VisualStudio.TestTools.UnitTesting
 open Stlc
@@ -21,11 +21,14 @@ type TestClass() =
     member _.ID() =
 
             // check type
+            //    id : bool -> bool
         Assert.AreEqual(
-            Function(Boolean, Boolean),
+            Function (Boolean, Boolean),
             Term.typeOf id)
 
             // check function application
+            //    id true = true
+            //    id false = false
         for arg in [ True; False ] do
             Assert.AreEqual(arg, apply id arg)
 
@@ -33,41 +36,47 @@ type TestClass() =
     member _.Not() =
 
             // check type
+            //    not : bool -> bool
         Assert.AreEqual(
-            Function(Boolean, Boolean),
-            Term.typeOf id)
+            Function (Boolean, Boolean),
+            Term.typeOf not)
 
             // check function application
+            //   not true = false
+            //   not false = true
         let cases =
             [
                 True, False
                 False, True
             ]
-        for (arg, expected) in cases do
+        for arg, expected in cases do
             Assert.AreEqual(expected, apply not arg)
 
     [<TestMethod>]
     member _.TypeError() =
         let term = If (True, True, id)
-        Assert.ThrowsException(fun () ->
-            Term.typeOf term |> ignore)
-                |> ignore
+        let exn =
+            Assert.ThrowsException(fun () ->
+                Term.typeOf term |> ignore)
+        Assert.AreEqual("Branch type mismatch", exn.Message)
 
     [<TestMethod>]
     member _.NestedLambda() =
 
             // fun f -> (fun x -> f x)
+            //    λ not true = false
         let lambda =
             Lambda (
-                Function(Boolean, Boolean),
+                Function (Boolean, Boolean),
                 Lambda (Boolean, Apply (Variable 1, Variable 0)))
         let term = Apply (Apply (lambda, not), True)
         Assert.AreEqual(False, Term.eval term)
 
             // fun x -> (fun f -> f x)
+            //   λ true not = false
         let lambda =
             Lambda (
-                Function(Boolean, Boolean),
+                Function (Boolean, Boolean),
                 Lambda (Boolean, Apply (Variable 0, Variable 1)))
         let term = Apply (Apply (lambda, True), not)
         Assert.AreEqual(False, Term.eval term)
@@ -116,9 +125,10 @@ type TestClass() =
     member _.OpenTerm() =
 
             // fun x -> x y
+            //    λ id = y
         let lambda =
             Lambda (
-                Function(Boolean, Boolean),
+                Function (Boolean, Boolean),
                 Apply (Variable 0, Variable 1))
         let term = Apply (lambda, id)
         Assert.AreEqual(Variable 0, Term.eval term)
