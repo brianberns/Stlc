@@ -4,7 +4,7 @@ open Microsoft.VisualStudio.TestTools.UnitTesting
 open Stlc
 
 [<TestClass>]
-type TestClass () =
+type TestClass() =
 
     /// Function application.
     let apply lambda arg =
@@ -18,7 +18,7 @@ type TestClass () =
     let not = Lambda (Boolean, If (Variable 0, False, True))
 
     [<TestMethod>]
-    member __.ID() =
+    member _.ID() =
 
             // check type
         Assert.AreEqual(
@@ -30,7 +30,7 @@ type TestClass () =
             Assert.AreEqual(arg, apply id arg)
 
     [<TestMethod>]
-    member __.Not() =
+    member _.Not() =
 
             // check type
         Assert.AreEqual(
@@ -47,14 +47,14 @@ type TestClass () =
             Assert.AreEqual(expected, apply not arg)
 
     [<TestMethod>]
-    member __.TypeError() =
+    member _.TypeError() =
         let term = If (True, True, id)
         Assert.ThrowsException(fun () ->
             Term.typeOf term |> ignore)
                 |> ignore
 
     [<TestMethod>]
-    member __.NestedLambda() =
+    member _.NestedLambda() =
 
             // fun f -> (fun x -> f x)
         let lambda =
@@ -73,7 +73,7 @@ type TestClass () =
         Assert.AreEqual(False, Term.eval term)
 
     [<TestMethod>]
-    member __.Or() =
+    member _.Or() =
 
             // fun x -> fun y -> if x then true else y
         let lambda =
@@ -93,7 +93,7 @@ type TestClass () =
             Assert.AreEqual(expected, Term.eval term)
 
     [<TestMethod>]
-    member __.And() =
+    member _.And() =
 
             // fun x -> fun y -> if x then y else false
         let lambda =
@@ -113,7 +113,7 @@ type TestClass () =
             Assert.AreEqual(expected, Term.eval term)
 
     [<TestMethod>]
-    member __.OpenTerm() =
+    member _.OpenTerm() =
 
             // fun x -> x y
         let lambda =
