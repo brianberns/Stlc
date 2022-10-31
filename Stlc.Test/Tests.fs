@@ -124,8 +124,7 @@ type TestClass() =
     [<TestMethod>]
     member _.OpenTerm() =
 
-            // fun x -> x y
-            //    λ id = y
+            // (fun x -> x y) id = y
         let lambda =
             Lambda (
                 Function (Boolean, Boolean),
