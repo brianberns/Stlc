@@ -20,8 +20,3 @@ And we can show that this function inverts its input, as expected:
 let result = Apply(not, True) |> Term.eval
 assert(result = False)
 ```
-
-<!--stackedit_data:
-eyJoaXN0b3J5IjpbMzg0NjI3NTgzLDU2MTIwMzQzMyw2ODE3ND
-kyMDksMTY0OTA3NzYxMSwtMjExNjExNjkyOV19
--->
