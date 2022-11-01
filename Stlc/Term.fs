@@ -4,16 +4,18 @@ namespace Stlc
 /// A type is either:
 ///    * A primitive type (e.g. Boolean), or
 ///    * A function type, which maps an input type to an
-///      output type (e.g. Boolean -> Boolean).
+///      output type (e.g. Integer -> Boolean).
 [<StructuredFormatDisplay("{String}")>]
 type Type =
-    | Boolean   // a simple primitive type
+    | Boolean
+    | Integer
     | Function of input : Type * output : Type
 
     /// Pretty-print types.
     member typ.String =
         match typ with
             | Boolean -> "bool"
+            | Integer -> "int"
             | Function (inType, outType) ->
                 sprintf $"{inType} -> {outType}"
 
@@ -26,6 +28,9 @@ type Term =
 
     /// Literal false.
     | False
+
+    /// Literal integer.
+    | IntLiteral of int
 
     /// If-then-else.
     | If of condition : Term
@@ -47,6 +52,7 @@ type Term =
         match term with
             | True -> "true"
             | False -> "false"
+            | IntLiteral n -> string n
             | If (cond, trueBranch, falseBranch) ->
                 $"(if {cond} then {trueBranch} else {falseBranch})"
             | Variable i -> $"var{i}"
@@ -65,8 +71,9 @@ module Term =
         /// bound at a higher level than this).
         let rec loop env = function
 
-                // Boolean literals
+                // literals
             | True | False -> Ok Boolean
+            | IntLiteral n -> Ok Integer
 
                 // if cond then trueBranch else falseBranch
             | If (cond, trueBranch, falseBranch) ->
@@ -153,6 +160,7 @@ module Term =
                     // no effect on literals
                 | True -> Ok True
                 | False -> Ok False
+                | IntLiteral n -> Ok (IntLiteral n)
 
                     // recursively substitute
                 | If (cond, trueBranch, falseBranch) ->
