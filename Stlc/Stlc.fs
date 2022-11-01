@@ -8,7 +8,7 @@ namespace Stlc
 [<StructuredFormatDisplay("{String}")>]
 type Type =
     | Boolean   // a simple primitive type
-    | Function of Input : Type * Output : Type
+    | Function of input : Type * output : Type
 
     /// Pretty-print types.
     member typ.String =
@@ -28,19 +28,19 @@ type Term =
     | False
 
     /// If-then-else.
-    | If of Condition : Term
-        * TrueBranch : Term
-        * FalseBranch : Term
+    | If of condition : Term
+        * trueBranch : Term
+        * falseBranch : Term
 
     /// A variable, using de Bruijn indexing. Index 0 corresponds
     /// to the most nested lambda's input parameter.
-    | Variable of Index : int
+    | Variable of index : int
 
     /// Lambda abstraction. E.g. fun (_ : bool) -> var0.
-    | Lambda of ParamType : Type * Body : Term
+    | Lambda of paramType : Type * body : Term
 
     /// Function application. E.g. f(x).
-    | Apply of Lambda : Term * Arg : Term
+    | Apply of lambda : Term * arg : Term
 
     /// Pretty-print terms.
     member term.String =
