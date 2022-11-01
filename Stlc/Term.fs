@@ -66,39 +66,49 @@ module Term =
         let rec loop env = function
 
                 // Boolean literals
-            | True | False -> Boolean
+            | True | False -> Ok Boolean
 
                 // if cond then trueBranch else falseBranch
             | If (cond, trueBranch, falseBranch) ->
-                match loop env cond with
-                    | Boolean ->   // condition must be a plain Boolean
-                        let trueType = loop env trueBranch
-                        let falseType = loop env falseBranch
-                        if trueType = falseType then trueType   // branch types must match
-                        else failwith "Branch type mismatch"
-                    | _ -> failwith "Condition must be of type Boolean"
+                result {
+                    match! loop env cond with
+                        | Boolean ->   // condition must be a plain Boolean
+                            let! trueType = loop env trueBranch
+                            let! falseType = loop env falseBranch
+                            if trueType = falseType then   // branch types must match
+                                return trueType
+                            else
+                                return! Error "Branch type mismatch"
+                        | _ ->
+                            return! Error "Condition must be of type Boolean"
+                }
 
                 // variable in the given environment
             | Variable i ->
-                env
-                    |> List.tryItem i
-                    |> Option.defaultWith (fun () ->
-                        failwith "Unbound variable")
+                match List.tryItem i env with
+                    | Some typ -> Ok typ
+                    | None -> Error "Unbound variable"
 
                 // fun (_ : paramType) -> body
             | Lambda (paramType, body) ->
-                let bodyType =
+                result {
                     let env' = paramType :: env   // add param type to environment
-                    loop env' body
-                Function (paramType, bodyType)
+                    let! bodyType = loop env' body
+                    return Function (paramType, bodyType)
+                }
 
                 // function application
             | Apply (lambda, arg) ->
-                match loop env lambda with   // first term must be a function
-                    | Function (inType, outType) ->
-                        if loop env arg = inType then outType   // argument's type must match expected input type
-                        else failwith "Unexpected argument type"
-                    | _ -> failwith "Not a function"
+                result {
+                    match! loop env lambda with   // first term must be a function
+                        | Function (inType, outType) ->
+                            let! argType = loop env arg
+                            if argType = inType then   // argument's type must match expected input type
+                                return outType
+                            else
+                                return! Error "Unexpected argument type"
+                        | _ -> return! Error "Not a function"
+                }
 
         loop [] term
 
@@ -139,46 +149,65 @@ module Term =
         match body with
 
                 // no effect on literals
-            | True -> True
-            | False -> False
+            | True -> Ok True
+            | False -> Ok False
 
                 // recursively substitute
             | If (cond, trueBranch, falseBranch) ->
-                If (cont cond, cont trueBranch, cont falseBranch)
+                result {
+                    let! cond' = cont cond
+                    let! trueBranch' = cont trueBranch
+                    let! falseBranch' = cont falseBranch
+                    return If (cond', trueBranch', falseBranch')
+                }
 
                 // substitute iff variables match
             | Variable iVar ->
                 match compare iVar iParam with
-                     | -1 -> body                  // not a match: no effect
-                     |  0 -> arg                   // match: substitute value
-                     |  1 -> Variable (iVar - 1)   // free variable: shift to maintain external references to it
+                     | -1 -> Ok body                    // not a match: no effect
+                     |  0 -> Ok arg                     // match: substitute value
+                     |  1 -> Ok (Variable (iVar - 1))   // free variable: shift to maintain external references to it
                      |  _ -> failwith "Unexpected"
 
                 // current var0 is known as var1 within
             | Lambda (argType, body') ->
-                let body' = subst (iParam+1) arg body'
-                Lambda (argType, body')
+                result {
+                    let! body' = subst (iParam+1) arg body'
+                    return Lambda (argType, body')
+                }
 
                 // recursively substitute
             | Apply (lambda, arg) ->
-                Apply (cont lambda, cont arg)
+                result {
+                    let! lambda' = cont lambda
+                    let! arg' = cont arg
+                    return Apply (lambda', arg')
+                }
 
     /// Evaluates the given term.
     let rec eval = function
 
             // function application
         | Apply (lambda, arg) ->
-            match eval lambda with
-                | Lambda (_, body) ->
-                    subst 0 arg body
-                        |> eval
-                | _ -> failwith "Not a function"
+            result {
+                match! eval lambda with
+                    | Lambda (_, body) ->
+                        let! term = subst 0 arg body
+                        return! eval term
+                    | _ ->
+                        return! Error "Not a function"
+            }
 
             // evaluate correct branch only
         | If (cond, trueBranch, falseBranch) ->
-            match eval cond with
-                | True -> eval trueBranch
-                | False -> eval falseBranch
-                | _ -> failwith "Condition must be of type Boolean"
+            result {
+                match! eval cond with
+                    | True ->
+                        return! eval trueBranch
+                    | False ->
+                        return! eval falseBranch
+                    | _ ->
+                        return! Error "Condition must be of type Boolean"
+            }
 
-        | term -> term
+        | term -> Ok term

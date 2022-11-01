@@ -22,23 +22,23 @@ type TestClass() =
 
             // check type
             //    id : bool -> bool
-        Assert.AreEqual(
-            Function (Boolean, Boolean),
+        Assert.AreEqual<_>(
+            Ok (Function (Boolean, Boolean)),
             Term.typeOf id)
 
             // check function application
             //    id true = true
             //    id false = false
         for arg in [ True; False ] do
-            Assert.AreEqual(arg, apply id arg)
+            Assert.AreEqual<_>(Ok arg, apply id arg)
 
     [<TestMethod>]
     member _.Not() =
 
             // check type
             //    not : bool -> bool
-        Assert.AreEqual(
-            Function (Boolean, Boolean),
+        Assert.AreEqual<_>(
+            Ok (Function (Boolean, Boolean)),
             Term.typeOf not)
 
             // check function application
@@ -50,15 +50,14 @@ type TestClass() =
                 False, True
             ]
         for arg, expected in cases do
-            Assert.AreEqual(expected, apply not arg)
+            Assert.AreEqual<_>(Ok expected, apply not arg)
 
     [<TestMethod>]
     member _.TypeError() =
         let term = If (True, True, id)
-        let exn =
-            Assert.ThrowsException(fun () ->
-                Term.typeOf term |> ignore)
-        Assert.AreEqual("Branch type mismatch", exn.Message)
+        Assert.AreEqual<_>(
+            Error "Branch type mismatch",
+            Term.typeOf term)
 
     [<TestMethod>]
     member _.NestedLambda() =
@@ -70,7 +69,7 @@ type TestClass() =
                 Function (Boolean, Boolean),
                 Lambda (Boolean, Apply (Variable 1, Variable 0)))
         let term = Apply (Apply (lambda, not), True)
-        Assert.AreEqual(False, Term.eval term)
+        Assert.AreEqual<_>(Ok False, Term.eval term)
 
             // fun x -> (fun f -> f x)
             //   λ true not = false
@@ -79,7 +78,7 @@ type TestClass() =
                 Function (Boolean, Boolean),
                 Lambda (Boolean, Apply (Variable 0, Variable 1)))
         let term = Apply (Apply (lambda, True), not)
-        Assert.AreEqual(False, Term.eval term)
+        Assert.AreEqual<_>(Ok False, Term.eval term)
 
     [<TestMethod>]
     member _.Or() =
@@ -99,7 +98,7 @@ type TestClass() =
             ] 
         for (x, y, expected) in cases do
             let term = Apply (Apply (lambda, x), y)
-            Assert.AreEqual(expected, Term.eval term)
+            Assert.AreEqual<_>(Ok expected, Term.eval term)
 
     [<TestMethod>]
     member _.And() =
@@ -119,7 +118,7 @@ type TestClass() =
             ] 
         for (x, y, expected) in cases do
             let term = Apply (Apply (lambda, x), y)
-            Assert.AreEqual(expected, Term.eval term)
+            Assert.AreEqual<_>(Ok expected, Term.eval term)
 
     [<TestMethod>]
     member _.OpenTerm() =
@@ -131,4 +130,4 @@ type TestClass() =
                 Function (Boolean, Boolean),
                 Apply (Variable 0, Variable 1))
         let term = Apply (lambda, id)
-        Assert.AreEqual(Variable 0, Term.eval term)
+        Assert.AreEqual<_>(Ok (Variable 0), Term.eval term)

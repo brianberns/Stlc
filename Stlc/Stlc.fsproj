@@ -5,7 +5,8 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Compile Include="Stlc.fs" />
+    <Compile Include="Result.fs" />
+    <Compile Include="Term.fs" />
   </ItemGroup>
 
 </Project>
