@@ -144,45 +144,49 @@ module Term =
      *)
 
     /// Replaces all occurrences of param with arg in body.
-    let rec private subst iParam arg body =
-        let cont = subst iParam arg   // shorthand for simple recursive substitution
-        match body with
+    let private subst arg body =
 
-                // no effect on literals
-            | True -> Ok True
-            | False -> Ok False
+        let rec loop iParam arg body =
+            let cont = loop iParam arg   // shorthand for simple recursive substitution
+            match body with
 
-                // recursively substitute
-            | If (cond, trueBranch, falseBranch) ->
-                result {
-                    let! cond' = cont cond
-                    let! trueBranch' = cont trueBranch
-                    let! falseBranch' = cont falseBranch
-                    return If (cond', trueBranch', falseBranch')
-                }
+                    // no effect on literals
+                | True -> Ok True
+                | False -> Ok False
 
-                // substitute iff variables match
-            | Variable iVar ->
-                match compare iVar iParam with
-                     | -1 -> Ok body                    // not a match: no effect
-                     |  0 -> Ok arg                     // match: substitute value
-                     |  1 -> Ok (Variable (iVar - 1))   // free variable: shift to maintain external references to it
-                     |  _ -> failwith "Unexpected"
+                    // recursively substitute
+                | If (cond, trueBranch, falseBranch) ->
+                    result {
+                        let! cond' = cont cond
+                        let! trueBranch' = cont trueBranch
+                        let! falseBranch' = cont falseBranch
+                        return If (cond', trueBranch', falseBranch')
+                    }
 
-                // current var0 is known as var1 within
-            | Lambda (argType, body') ->
-                result {
-                    let! body' = subst (iParam+1) arg body'
-                    return Lambda (argType, body')
-                }
+                    // substitute iff variables match
+                | Variable iVar ->
+                    match compare iVar iParam with
+                         | -1 -> Ok body                    // not a match: no effect
+                         |  0 -> Ok arg                     // match: substitute value
+                         |  1 -> Ok (Variable (iVar - 1))   // free variable: shift to maintain external references to it
+                         |  _ -> Error "Unexpected"
 
-                // recursively substitute
-            | Apply (lambda, arg) ->
-                result {
-                    let! lambda' = cont lambda
-                    let! arg' = cont arg
-                    return Apply (lambda', arg')
-                }
+                    // current var0 is known as var1 within
+                | Lambda (argType, body') ->
+                    result {
+                        let! body' = loop (iParam+1) arg body'
+                        return Lambda (argType, body')
+                    }
+
+                    // recursively substitute
+                | Apply (lambda, arg) ->
+                    result {
+                        let! lambda' = cont lambda
+                        let! arg' = cont arg
+                        return Apply (lambda', arg')
+                    }
+
+        loop 0 arg body
 
     /// Evaluates the given term.
     let rec eval = function
@@ -192,7 +196,7 @@ module Term =
             result {
                 match! eval lambda with
                     | Lambda (_, body) ->
-                        let! term = subst 0 arg body
+                        let! term = subst arg body
                         return! eval term
                     | _ ->
                         return! Error "Not a function"
